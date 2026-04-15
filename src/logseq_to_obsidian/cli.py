@@ -114,7 +114,13 @@ def main(argv: List[str]) -> int:
             rel_out = pl.out_path.relative_to(opt.output_dir)
         except ValueError:
             rel_out = pl.out_path
-        canonical_title = rel_out.with_suffix("").as_posix()
+        
+        path_without_ext = rel_out.with_suffix("").as_posix()
+        # Logseq 'pages/' folder is an implementation detail; strip it for cleaner Obsidian links
+        if path_without_ext.startswith("pages/"):
+            canonical_title = path_without_ext[len("pages/"):]
+        else:
+            canonical_title = path_without_ext
 
         # Build alias map
         raw_lines = raw.splitlines(keepends=True)
