@@ -12,69 +12,69 @@
 
 ### 概述
 
-- 将 Logseq 库（Markdown 格式）转换为对 Obsidian 友好的 Markdown 格式。
-- 自动处理：页面属性 → YAML 正文、任务状态、块 ID 锚点、以及跨文件的块引用映射。
-- 目录结构：默认将 `pages/` 内容移动到库根目录（可通过参数保留），并自动重命名日记文件。
-- **属性转标签**：支持将特定属性（`--tag-property`）或所有自定义属性（`--tag-all-properties`）转换为标签。
-    - **嵌套与小写**：转换后采用 `key/value` 嵌套格式，且英文统一转换为小写（例如 `person:: [[John]]` → `#person/john`），完美适配 Obsidian 标签体系。
-- **全局别名解析**：自动解析全库别名（Alias）。如果文件 A 的别名是 B，引用 `[[B]]` 会自动转换为 `[[A|B]]`，确保链接指向正确的文件。
-- **缺失页面生成**：可选自动为未定义的 Wiki 链接创建纯净的占位文件（仅含 H1 标题）。
+将 Logseq 库（Markdown 格式）转换为对 Obsidian 友好的格式。本工具旨在解决 Logseq 与 Obsidian 之间的元数据差异、链接逻辑及插件兼容性问题。
 
 ### 核心功能
 
 - **页面属性转换**：
     - 将顶部的 `key:: value` 转换为 YAML front matter。
-    - **引号引用**：自动对数字别名（如 `alias:: 1`）和含有 Wiki 链接的属性（如 `word:: [[link]]`）添加引号，确保元数据在 Obsidian 中被正确识别。
-- **标签规范化**：
-    - 将 `tags::` 转换为 YAML 数组。
-    - 优先级顺序：按逗号分隔符、Wiki 链接、`#hashtag` 的顺序依次提取并排重。
+    - **支持中文属性名**：完美识别如 `类别::`、`作者::` 等非 ASCII 属性。
+    - **嵌套标签支持**：可选将属性转换为 `key/value` 格式的标签，并自动处理英文字符小写。
+- **全局别名 (Alias) 解析**：
+    - 自动扫描全库别名。如果引用了别名 `[[B]]`，脚本会根据库索引将其转换为 `[[原页面标题|B]]`，确保 Obsidian 链接不断联。
 - **任务标记系统**：
-    - 兼容 Logseq 的 10 种任务状态（如 `TODO`, `DOING`, `DONE`, `CANCELED` 等）。
-    - 状态映射：`DONE/CANCELED` 映射为已完成 `[x]`，其余映射为未完成 `[ ]`。
-    - 支持优先级：`[#A/B/C]` 可选输出为 Emoji (`⏫/🔼/🔽`) 或 Dataview 字段。
-    - 日期支持：自动解析 `SCHEDULED` 和 `DEADLINE` 及其循环规则（Repeater），并移除多余的时间戳标记。
-- **块 ID 与块引用解析**：
-    - 块 ID：将 `id:: <uuid>` 转换为行尾的 `^<uuid>` 锚点。
-    - 跨文件引用：扫描全库以将 `((<uuid>))` 转换为正确的 `[[文件名#^<uuid>]]` 格式。
-- **路径与文件管理**：
-    - **层级转换**：自动将文件名中的 `___` 转换为子目录结构（例如 `pages/A___B.md` → `A/B.md`）。
-    - **自动过滤**：转换过程中会自动跳过 `.git/`, `logseq/` 元数据目录及不支持的 `whiteboards/` 目录。
-    - **特殊处理**：对含有百分比编码（Percent-encoded）的文件名发出警告，提示可能的链接失效风险。
-- **标题与折叠优化**：
-    - 如果标题行后直接紧跟缩进列表，会自动将标题转换为列表项（`- # 标题`），以保持 Obsidian 中的折叠逻辑与 Logseq 一致。
+    - 支持 Logseq 的所有 10 种状态（TODO, DOING, DONE 等）。
+    - 映射优先级、日程（SCHEDULED）和截止日期（DEADLINE）为 Obsidian 任务插件格式。
+- **块 ID 与块引用**：
+    - 将 Logseq 的块 ID 转换为 Obsidian 锚点 (`^uuid`)。
+    - 自动将全库的 `((uuid))` 引用转换为正确的 `[[文件名#^uuid]]`。
+- **文件层级优化**：
+    - 自动将文件名中的 `___` 转换为子目录结构（如 `A___B.md` → `A/B.md`）。
+- **缺失页面处理**：
+    - 自动为被引用但不存在的页面创建纯净的占位文件（仅含 H1 标题）。
 
-### 安装
+### 安装指南
 
+本项目需要 **Python 3.9+**。
+
+#### 1. 使用 pip (所有平台)
 ```bash
-# 推荐使用 pipx
-pipx install logseq-to-obsidian
-# 或使用 pip
 pip install logseq-to-obsidian
 ```
 
-### 使用方法
-
+#### 2. 使用 pipx (推荐，环境隔离)
 ```bash
-logseq-to-obsidian \
-  --input /path/to/logseq-vault \
-  --output /path/to/obsidian-vault \
-  --daily-folder "Daily Notes" \
-  --tasks-format emoji \
-  --keep-pages
+pipx install logseq-to-obsidian
 ```
 
-### 参数详解
+### 操作说明
 
-- `--input`: Logseq 库根目录（必须包含 `pages/`）。
+#### 🐧 Linux / 🍎 macOS
+打开终端并执行：
+```bash
+logseq-to-obsidian --input "~/LogseqVault" --output "~/ObsidianVault" --tag-all-properties --create-missing-pages
+```
+
+#### 🪟 Windows
+建议使用 **PowerShell** 或 **CMD**。请确保 Python 的 `Scripts` 文件夹已添加到系统环境变量 PATH 中。
+
+**PowerShell 示例**:
+```powershell
+logseq-to-obsidian --input "C:\Users\Name\Documents\Logseq" --output "C:\Users\Name\Documents\Obsidian" --tag-all-properties --create-missing-pages
+```
+
+**提示**: 如果路径中包含空格，请务必使用双引号包裹。
+
+### 常用参数
+
+- `--input`: Logseq 库根目录。
 - `--output`: 目标 Obsidian 库路径。
-- `--daily-folder <name>`: 将日记（journals）移动到指定的子文件夹。
-- `--tasks-format {emoji|dataview}`: 任务元数据的表现风格。
-- `--field-key <key>`: 将 `[[key/value]]` 形式的链接转换为 Dataview 行内字段。
-- `--tag-property <key>`: 将指定属性（Key 和所有 Value）转换为标签（Tags）。
-- `--tag-all-properties`: 将所有自定义属性（alias 以外）转换为标签。
-- `--keep-pages`: 在输出库中保留 `pages/` 顶级文件夹。
-- `--create-missing-pages`: 自动为库中不存在但被引用的 Wiki 链接创建占位文件。
-- `--dry-run`: 预览转换结果而不执行写入。
+- `--tag-all-properties`: 将所有自定义属性转换为标签（如 `类别:: [[书籍]]` -> `#类别/书籍`）。
+- `--tag-property <key>`: 仅将特定属性转换为标签。
+- `--create-missing-pages`: 自动创建丢失的链接文件。
+- `--keep-pages`: 保留 `pages/` 顶级文件夹，不进行目录扁平化。
+- `--daily-folder <name>`: 指定日记文件夹名称（如 "Daily Notes"）。
+- `--dry-run`: 预览转换计划而不写入文件。
 
 ---
 
@@ -82,49 +82,67 @@ logseq-to-obsidian \
 
 ### Overview
 
-- Converts a Logseq vault to Obsidian-friendly Markdown.
-- Handles automated mapping of properties, task states, block anchors, and cross-file references.
-- Optimizes folder structure by flattening `pages/` (optional) and renaming journals.
+A comprehensive tool to convert Logseq Markdown vaults into Obsidian-friendly formats, resolving discrepancies in metadata, link logic, and task management.
 
 ### Key Features
 
-- **YAML Front Matter**:
-    - Converts `key:: value` pairs with smart quoting for numbers and `[[wikilinks]]` to ensure Obsidian compatibility.
-- **Property to Tags**:
-    - Supports nested tags (`key/value`) and case normalization (lowercase) when promoting properties to tags (e.g., `person:: [[John]]` -> `#person/john`).
-- **Global Alias Resolution**: Automatically resolves `[[Alias]]` to `[[RealTitle|Alias]]` across the entire vault.
-- **Missing Pages**:
-    - Optionally creates minimal placeholder files (H1 only) for wikilinks pointing to non-existent pages.
-- **Tag Normalization**:
-    - Extracts tags from comma-separated strings, wikilinks, and hashtags while preserving a natural order.
-- **Advanced Task States**:
-    - Supports all 10 Logseq states, priorities, and complex date/repeater metadata.
+- **Property Promotion**:
+    - Converts `key:: value` to YAML front matter.
+    - **Unicode Support**: Correctly parses non-ASCII keys (e.g., Chinese `类别`, `作者`).
+    - **Nested Tags**: Promotes properties to `#key/value` tags with automatic lowercasing for English values.
+- **Global Alias Resolution**:
+    - Scans the entire vault for aliases. Rewrites `[[Alias]]` to `[[RealTitle|Alias]]` based on a global index.
+- **Task Management**:
+    - Maps all 10 Logseq states and handles Priorities, SCHEDULED, and DEADLINE metadata for Obsidian compatibility.
 - **Block Reference Resolution**:
-    - Scans the entire vault to turn `((uuid))` references into precise `[[File#^id]]` links.
-- **Path & Hierarchy**:
-    - Automatically expands `___` separators in filenames into a real folder hierarchy.
-    - Filters out `.git/`, `logseq/` metadata, and `whiteboards/`.
-- **Folding Consistency**:
-    - Identifies headings followed by indented lists and converts them to list-item headings (`- # Heading`) for consistent UI behavior.
+    - Converts `((uuid))` references into precise cross-file `[[File#^id]]` links.
+- **Hierarchy Mapping**:
+    - Expands `___` in filenames into a real folder hierarchy (e.g., `A___B.md` -> `A/B.md`).
+- **Minimal Placeholders**:
+    - Automatically creates minimal (H1 only) pages for missing wikilink targets.
 
-### Usage
+### Installation
 
+Requires **Python 3.9+**.
+
+#### 1. Using pip
 ```bash
-logseq-to-obsidian --input <logseq_path> --output <obsidian_path> --keep-pages
+pip install logseq-to-obsidian
+```
+
+#### 2. Using pipx (Recommended)
+```bash
+pipx install logseq-to-obsidian
+```
+
+### Running the Tool
+
+#### 🐧 Linux / 🍎 macOS
+Run in your terminal:
+```bash
+logseq-to-obsidian --input "~/LogseqVault" --output "~/ObsidianVault" --tag-all-properties --create-missing-pages
+```
+
+#### 🪟 Windows
+Use **PowerShell** or **Command Prompt**. Ensure your Python `Scripts` directory is in your PATH.
+
+**PowerShell Example**:
+```powershell
+logseq-to-obsidian --input "C:\Users\Name\Logseq" --output "C:\Users\Name\Obsidian" --tag-all-properties --create-missing-pages
 ```
 
 ### Options
 
 - `--input`, `--output`: Source and destination directories.
-- `--daily-folder`: Rename and move journals.
-- `--keep-pages`: Opt-out of `pages/` flattening.
-- `--create-missing-pages`: Automatically create placeholder files for missing wikilink targets.
-- `--tag-property`: Promote specific properties to global tags.
-- `--tag-all-properties`: Promote all custom properties (except alias) to tags.
-- `--field-key`: Convert namespaced wikilinks to Dataview fields.
+- `--tag-all-properties`: Convert all custom properties to nested tags.
+- `--tag-property <key>`: Convert specific properties to tags.
+- `--create-missing-pages`: Create placeholder files for broken wikilinks.
+- `--keep-pages`: Preserve the `pages/` directory structure.
+- `--daily-folder <name>`: Specify the output directory for journals.
+- `--dry-run`: Preview changes without writing to disk.
 
 ---
 
-### Development / Contributing
+### Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md)
+See [CONTRIBUTING.md](CONTRIBUTING.md).
