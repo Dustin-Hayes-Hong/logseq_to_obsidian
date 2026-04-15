@@ -15,8 +15,10 @@
 - 将 Logseq 库（Markdown 格式）转换为对 Obsidian 友好的 Markdown 格式。
 - 自动处理：页面属性 → YAML 正文、任务状态、块 ID 锚点、以及跨文件的块引用映射。
 - 目录结构：默认将 `pages/` 内容移动到库根目录（可通过参数保留），并自动重命名日记文件。
-- **属性转标签**：可选将特定属性或所有自定义属性（除 alias 外）转换为全局标签。
-- **缺失页面生成**：可选自动为未定义的 Wiki 链接创建占位文件。
+- **属性转标签**：支持将特定属性（`--tag-property`）或所有自定义属性（`--tag-all-properties`）转换为标签。
+    - **嵌套与小写**：转换后采用 `key/value` 嵌套格式，且英文统一转换为小写（例如 `person:: [[John]]` → `#person/john`），完美适配 Obsidian 标签体系。
+- **全局别名解析**：自动解析全库别名（Alias）。如果文件 A 的别名是 B，引用 `[[B]]` 会自动转换为 `[[A|B]]`，确保链接指向正确的文件。
+- **缺失页面生成**：可选自动为未定义的 Wiki 链接创建纯净的占位文件（仅含 H1 标题）。
 
 ### 核心功能
 
@@ -89,9 +91,10 @@ logseq-to-obsidian \
 - **YAML Front Matter**:
     - Converts `key:: value` pairs with smart quoting for numbers and `[[wikilinks]]` to ensure Obsidian compatibility.
 - **Property to Tags**:
-    - Optionally promotes specific properties (and their values) to the `tags` field.
+    - Supports nested tags (`key/value`) and case normalization (lowercase) when promoting properties to tags (e.g., `person:: [[John]]` -> `#person/john`).
+- **Global Alias Resolution**: Automatically resolves `[[Alias]]` to `[[RealTitle|Alias]]` across the entire vault.
 - **Missing Pages**:
-    - Optionally creates placeholder files for wikilinks pointing to non-existent pages.
+    - Optionally creates minimal placeholder files (H1 only) for wikilinks pointing to non-existent pages.
 - **Tag Normalization**:
     - Extracts tags from comma-separated strings, wikilinks, and hashtags while preserving a natural order.
 - **Advanced Task States**:

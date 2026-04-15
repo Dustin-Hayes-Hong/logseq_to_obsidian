@@ -8,10 +8,14 @@ from typing import Dict, List
 from .planner import Options, collect_files, copy_or_write
 from .transformer import (
     build_block_index,
+    emit_yaml_frontmatter,
     extract_all_wikilinks,
+    normalize_aliases,
+    parse_page_properties,
     replace_asset_images,
     replace_block_refs,
     replace_embeds,
+    replace_global_aliases,
     replace_page_alias_links,
     replace_wikilinks_to_dv_fields,
     transform_markdown,
@@ -92,6 +96,7 @@ def main(argv: List[str]) -> int:
     # First pass: read markdown files and pre-transform to attach ids, etc., to allow building index
     pre_texts: Dict[Path, str] = {}
     in_to_out: Dict[Path, Path] = {pl.in_path: pl.out_path for pl in plans}
+    global_alias_map: Dict[str, str] = {}
 
     # warn_messages is shared with planner warnings
     for pl in plans:
@@ -103,15 +108,27 @@ def main(argv: List[str]) -> int:
             rel = pl.in_path
         print(f"[TRANSFORM] {rel}")
         raw = pl.in_path.read_text(encoding="utf-8")
-        # Compute the expected title as the vault-relative output path without extension
+        
+        # Determine canonical title for alias map
         try:
             rel_out = pl.out_path.relative_to(opt.output_dir)
         except ValueError:
             rel_out = pl.out_path
-        expected_title = rel_out.with_suffix("").as_posix()
+        canonical_title = rel_out.with_suffix("").as_posix()
+
+        # Build alias map
+        raw_lines = raw.splitlines(keepends=True)
+        props, _ = parse_page_properties(raw_lines)
+        als_src = props.get("aliases") or props.get("alias")
+        if als_src:
+            for a in normalize_aliases(als_src):
+                low = a.lower()
+                if low not in global_alias_map:
+                    global_alias_map[low] = canonical_title
+
         transformed = transform_markdown(
             raw,
-            expected_title_path=expected_title,
+            expected_title_path=canonical_title,
             rel_path_for_warn=rel,
             warn_collector=warn_messages,
             tasks_format=opt.tasks_format,
@@ -133,19 +150,21 @@ def main(argv: List[str]) -> int:
             text = replace_block_refs(text, block_index, in_to_out, opt.output_dir)
             text = replace_embeds(text)
             text = replace_page_alias_links(text)
+            text = replace_global_aliases(text, global_alias_map)
             text = replace_wikilinks_to_dv_fields(text, opt.field_keys)
             text = replace_asset_images(text)
             
             if opt.create_missing_pages:
                 all_wikilink_targets.update(extract_all_wikilinks(text))
 
-            # Ensure a trailing newline at EOF to match golden outputs
-            if not text.endswith("\n"):
+            # Ensure a trailing newline at EOF
+            if text and not text.endswith("\n"):
                 text += "\n"
+            
             copy_or_write(pl.out_path, text, pl.in_path, opt.dry_run)
             writes += 1
         else:
-            # Copy assets and others
+            # Simple copy for non-markdown assets
             copy_or_write(pl.out_path, None, pl.in_path, opt.dry_run)
             copies += 1
 
@@ -180,3 +199,7 @@ def main(argv: List[str]) -> int:
     if opt.dry_run:
         print("[INFO] Dry run complete. No files were written.")
     return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

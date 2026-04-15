@@ -144,6 +144,13 @@ def normalize_tags(val: str) -> List[str]:
     return found
 
 
+def _clean_tag(t: str) -> str:
+    """Lowercase and remove characters incompatible with Obsidian tags."""
+    # Obsidian tags support alphanumeric, underscores, hyphens, and slashes for nesting.
+    # We'll lowercase for consistency.
+    return t.strip().lower()
+
+
 def _quote_yaml_value(v: str) -> str:
     """Quote a string for YAML if it contains special characters or looks like a non-string type."""
     if not v:
@@ -185,14 +192,13 @@ def emit_yaml_frontmatter(
 
     for tk in sorted(to_tagify):
         if tk in props:
-            # Add key itself as a tag
-            if tk not in final_tags:
-                final_tags.append(tk)
-            # Add values as tags
+            # Add values as nested tags: key/value
             val_tags = normalize_tags(props[tk])
             for vt in val_tags:
-                if vt not in final_tags:
-                    final_tags.append(vt)
+                nested = f"{tk}/{vt}"
+                cleaned = _clean_tag(nested)
+                if cleaned not in final_tags:
+                    final_tags.append(cleaned)
 
     # title (may be suppressed upstream if equal to file path)
     if "title" in props:
@@ -571,6 +577,45 @@ def replace_page_alias_links(text: str) -> str:
             return f"[[{target}|{label}]]"
 
         out_lines.append(ALIAS_LINK_RE.sub(repl, line))
+    return "".join(out_lines)
+
+
+def replace_global_aliases(text: str, alias_map: Dict[str, str]) -> str:
+    """
+    Replace [[Alias]] with [[RealTitle|Alias]] based on a global mapping.
+    alias_map should be { lowercase_alias: target_title }.
+    """
+    if not alias_map:
+        return text
+
+    out_lines: List[str] = []
+    in_fence = False
+    for line in text.splitlines(keepends=True):
+        if _is_fence(line):
+            in_fence = not in_fence
+            out_lines.append(line)
+            continue
+        if in_fence:
+            out_lines.append(line)
+            continue
+
+        def repl(m: re.Match) -> str:
+            target = m.group("target").strip()
+            label = m.group("label").strip() if "label" in m.groupdict() and m.group("label") else None
+            
+            low = target.lower()
+            if low in alias_map:
+                real = alias_map[low]
+                if real.lower() != low:
+                    if label:
+                        return f"[[{real}|{label}]]"
+                    else:
+                        return f"[[{real}|{target}]]"
+            return m.group(0)
+
+        # Handle [[target|label]] and [[target]]
+        line = re.sub(r"\[\[(?P<target>[^|\]\n]+)(?:\|(?P<label>[^\]\n]+))?\]\]", repl, line)
+        out_lines.append(line)
     return "".join(out_lines)
 
 
