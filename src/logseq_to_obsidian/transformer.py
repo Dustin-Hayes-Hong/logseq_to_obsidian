@@ -108,6 +108,7 @@ def normalize_aliases(val: str) -> List[str]:
 
 
 def normalize_tags(val: str) -> List[str]:
+    """Split by comma, semicolon, or Chinese comma and extract wikilink targets and hashtags."""
     # Preserve intuitive order: comma-separated first (in order), then remaining wikilinks, then #tags.
     found: List[str] = []
 
@@ -118,8 +119,9 @@ def normalize_tags(val: str) -> List[str]:
         if t not in found:
             found.append(t)
 
-    # 1) Consume comma-separated parts left-to-right and extract any [[...]] or #... within each part.
-    for part in val.split(","):
+    # 1) Split by multiple separators: ',', ';', '、'
+    parts = re.split(r"[,;、]", val)
+    for part in parts:
         # wikilinks
         for m in INLINE_WIKILINK_RE.finditer(part):
             add(m.group(1))
@@ -159,11 +161,27 @@ def _quote_yaml_value(v: str) -> str:
     return v
 
 
-def emit_yaml_frontmatter(props: Dict[str, str]) -> Optional[str]:
+def emit_yaml_frontmatter(
+    props: Dict[str, str], tag_properties: List[str] = []
+) -> Optional[str]:
     if not props:
         return None
     # Map known keys
     yaml_lines: List[str] = ["---"]
+
+    # 0) Tagify properties
+    final_tags = normalize_tags(props.get("tags") or "")
+    for tk in tag_properties:
+        if tk in props:
+            # Add key itself as a tag
+            if tk not in final_tags:
+                final_tags.append(tk)
+            # Add values as tags
+            val_tags = normalize_tags(props[tk])
+            for vt in val_tags:
+                if vt not in final_tags:
+                    final_tags.append(vt)
+
     # title (may be suppressed upstream if equal to file path)
     if "title" in props:
         yaml_lines.append(f"title: {props['title']}")
@@ -176,21 +194,18 @@ def emit_yaml_frontmatter(props: Dict[str, str]) -> Optional[str]:
             for a in aliases:
                 yaml_lines.append(f"  - {_quote_yaml_value(a)}")
     # tags
-    tags_src = props.get("tags")
-    if tags_src:
-        tags = normalize_tags(tags_src)
-        if tags:
-            yaml_lines.append("tags:")
-            for t in tags:
-                yaml_lines.append(f"  - {_quote_yaml_value(t)}")
-    # Include other props (excluding those already handled)
-    handled = {"title", "aliases", "alias", "tags"}
+    if final_tags:
+        yaml_lines.append("tags:")
+        for t in final_tags:
+            yaml_lines.append(f"  - {t}")
+
+    # remaining properties
+    skip_keys = {"title", "alias", "aliases", "tags"} | set(tag_properties)
     for k, v in props.items():
-        if k in handled:
+        if k in skip_keys:
             continue
-        # Quote scalars to ensure they don't break YAML (links like [[...]] must be quoted)
-        if v:
-            yaml_lines.append(f"{k}: {_quote_yaml_value(v)}")
+        yaml_lines.append(f"{k}: {_quote_yaml_value(v)}")
+
     yaml_lines.append("---")
     return "\n".join(yaml_lines) + "\n\n"
 
@@ -787,6 +802,7 @@ def transform_markdown(
     rel_path_for_warn: Optional[Path] = None,
     warn_collector: Optional[List[str]] = None,
     tasks_format: str = "emoji",
+    tag_properties: List[str] = [],
 ) -> str:
     # Page frontmatter
     lines = text.splitlines(keepends=True)
@@ -806,7 +822,7 @@ def transform_markdown(
             if warn_collector is not None:
                 warn_collector.append(msg)
             props.pop("title", None)
-    yaml = emit_yaml_frontmatter(props)
+    yaml = emit_yaml_frontmatter(props, tag_properties)
 
     body_lines = lines[consumed:]
     # Drop leading blank lines in body; YAML already provides a separating blank line

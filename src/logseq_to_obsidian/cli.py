@@ -39,6 +39,12 @@ def parse_args(argv: List[str]) -> Options:
         default=[],
         help="Convert wikilinks of the form [[key/value]] to Dataview inline fields [key::value] for the given key(s).",
     )
+    p.add_argument(
+        "--tag-property",
+        action="append",
+        default=[],
+        help="Convert the given property (key and its values) into tags.",
+    )
     p.add_argument("--keep-pages", action="store_true", help="Keep the 'pages/' folder prefix in output")
     p.add_argument("--create-missing-pages", action="store_true", help="Create placeholder files for missing wikilink targets")
     p.add_argument("--dry-run", action="store_true", help="Do not write files; print plan only")
@@ -52,6 +58,7 @@ def parse_args(argv: List[str]) -> Options:
         field_keys=list(args.field_key or []),
         keep_pages=bool(args.keep_pages),
         create_missing_pages=bool(args.create_missing_pages),
+        tag_properties=list(args.tag_property or []),
     )
 
 
@@ -66,7 +73,7 @@ def main(argv: List[str]) -> int:
     print(f"[CONFIG] input={opt.input_dir}")
     print(f"[CONFIG] output={opt.output_dir}")
     print(
-        f"[CONFIG] daily_folder={opt.daily_folder or '-'} tasks_format={opt.tasks_format} field_keys={','.join(opt.field_keys) or '-'} dry_run={opt.dry_run}"
+        f"[CONFIG] daily_folder={opt.daily_folder or '-'} tasks_format={opt.tasks_format} field_keys={','.join(opt.field_keys) or '-'} tag_properties={','.join(opt.tag_properties) or '-'} dry_run={opt.dry_run}"
     )
 
     warn_messages: List[str] = []
@@ -102,6 +109,7 @@ def main(argv: List[str]) -> int:
             rel_path_for_warn=rel,
             warn_collector=warn_messages,
             tasks_format=opt.tasks_format,
+            tag_properties=opt.tag_properties,
         )
         pre_texts[pl.in_path] = transformed
 

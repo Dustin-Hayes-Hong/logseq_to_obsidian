@@ -15,6 +15,7 @@
 - 将 Logseq 库（Markdown 格式）转换为对 Obsidian 友好的 Markdown 格式。
 - 自动处理：页面属性 → YAML 正文、任务状态、块 ID 锚点、以及跨文件的块引用映射。
 - 目录结构：默认将 `pages/` 内容移动到库根目录（可通过参数保留），并自动重命名日记文件。
+- **属性转标签**：可选将特定属性（如 `person:: [[A]]`）转换为全局标签。
 - **缺失页面生成**：可选自动为未定义的 Wiki 链接创建占位文件。
 
 ### 核心功能
@@ -67,6 +68,7 @@ logseq-to-obsidian \
 - `--daily-folder <name>`: 将日记（journals）移动到指定的子文件夹。
 - `--tasks-format {emoji|dataview}`: 任务元数据的表现风格。
 - `--field-key <key>`: 将 `[[key/value]]` 形式的链接转换为 Dataview 行内字段。
+- `--tag-property <key>`: 将指定属性（Key 和所有 Value）转换为标签（Tags）。
 - `--keep-pages`: 在输出库中保留 `pages/` 顶级文件夹。
 - `--create-missing-pages`: 自动为库中不存在但被引用的 Wiki 链接创建占位文件。
 - `--dry-run`: 预览转换结果而不执行写入。
@@ -85,6 +87,8 @@ logseq-to-obsidian \
 
 - **YAML Front Matter**:
     - Converts `key:: value` pairs with smart quoting for numbers and `[[wikilinks]]` to ensure Obsidian compatibility.
+- **Property to Tags**:
+    - Optionally promotes specific properties (and their values) to the `tags` field.
 - **Missing Pages**:
     - Optionally creates placeholder files for wikilinks pointing to non-existent pages.
 - **Tag Normalization**:
@@ -111,6 +115,7 @@ logseq-to-obsidian --input <logseq_path> --output <obsidian_path> --keep-pages
 - `--daily-folder`: Rename and move journals.
 - `--keep-pages`: Opt-out of `pages/` flattening.
 - `--create-missing-pages`: Automatically create placeholder files for missing wikilink targets.
+- `--tag-property`: Promote specific properties to global tags.
 - `--field-key`: Convert namespaced wikilinks to Dataview fields.
 
 ---

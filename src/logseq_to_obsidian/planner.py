@@ -21,6 +21,7 @@ class Options:
     field_keys: List[str] = field(default_factory=list)
     keep_pages: bool = False
     create_missing_pages: bool = False
+    tag_properties: List[str] = field(default_factory=list)
 
 
 @dataclass
