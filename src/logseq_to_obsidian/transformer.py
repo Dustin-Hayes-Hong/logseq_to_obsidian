@@ -5,9 +5,9 @@ import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-PAGE_PROP_RE = re.compile(r"^([A-Za-z0-9_\-]+)::\s*(.*)\s*$")
+PAGE_PROP_RE = re.compile(r"^([\w\-]+)::\s*(.*)\s*$")
 # Block properties may be indented under a list item in Logseq
-BLOCK_PROP_RE = re.compile(r"^\s*([A-Za-z0-9_\-]+)::\s*(.*)\s*$")
+BLOCK_PROP_RE = re.compile(r"^\s*([\w\-]+)::\s*(.*)\s*$")
 HEAD_BULLET_RE = re.compile(r"^(?P<indent>[ \t]*)-\s+(?P<after>.*)$")
 STATE_RE = re.compile(
     r"^(?P<state>TODO|DONE|DOING|LATER|NOW|WAIT|WAITING|IN-PROGRESS|CANCELED|CANCELLED)\b"
