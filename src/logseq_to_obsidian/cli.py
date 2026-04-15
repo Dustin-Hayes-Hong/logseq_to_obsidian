@@ -168,7 +168,7 @@ def main(argv: List[str]) -> int:
                 missing_path = pages_dir / f"{target}.md"
                 if not missing_path.exists():
                     missing_path.parent.mkdir(parents=True, exist_ok=True)
-                    missing_path.write_text(f"# {target}\n\nThis page was automatically created from a wikilink.", encoding="utf-8")
+                    missing_path.write_text(f"# {target}\n", encoding="utf-8")
                     num_missing_created += 1
         
         if num_missing_created > 0:
