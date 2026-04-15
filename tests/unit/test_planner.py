@@ -100,3 +100,46 @@ def test_collect_files_skips_git_directory(tmp_path, capsys):
     capsys.readouterr()
 
     assert all(".git" not in plan.in_path.parts for plan in plans)
+
+
+def test_plan_output_path_respects_keep_pages():
+    from logseq_to_obsidian.planner import plan_output_path
+    from pathlib import Path
+    
+    input_dir = Path("/vault")
+    output_dir = Path("/out")
+    
+    # Flatten (default)
+    opt_flatten = Options(
+        input_dir=input_dir,
+        output_dir=output_dir,
+        daily_folder=None,
+        dry_run=True,
+        tasks_format="emoji",
+        field_keys=[],
+        keep_pages=False,
+    )
+    
+    # Keep pages
+    opt_keep = Options(
+        input_dir=input_dir,
+        output_dir=output_dir,
+        daily_folder=None,
+        dry_run=True,
+        tasks_format="emoji",
+        field_keys=[],
+        keep_pages=True,
+    )
+    
+    p = Path("/vault/pages/Sub/Note.md")
+    
+    # Expected flatten: /out/Sub/Note.md (drops 'pages')
+    # Expected keep: /out/pages/Sub/Note.md (keeps 'pages')
+    
+    out_flatten = plan_output_path(p, opt_flatten)
+    out_keep = plan_output_path(p, opt_keep)
+    
+    # We compare relative to output_dir to avoid OS path quirks in string comparison if needed, 
+    # but plan_output_path returns absolute paths.
+    assert out_flatten == output_dir / "Sub" / "Note.md"
+    assert out_keep == output_dir / "pages" / "Sub" / "Note.md"

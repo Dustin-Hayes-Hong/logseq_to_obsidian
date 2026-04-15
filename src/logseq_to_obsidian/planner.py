@@ -19,6 +19,7 @@ class Options:
     dry_run: bool
     tasks_format: str  # 'emoji' or 'dataview'
     field_keys: List[str]
+    keep_pages: bool = False
 
 
 @dataclass
@@ -61,7 +62,8 @@ def plan_output_path(p: Path, opt: Options) -> Path:
     # Handle pages flattening (always) and expand "___" to folder separators for markdown files
     was_pages = parts and parts[0] == "pages"
     if was_pages:
-        parts = list(parts[1:])  # drop the 'pages' segment
+        if not opt.keep_pages:
+            parts = list(parts[1:])  # drop the 'pages' segment
         if is_markdown(p) and parts:
             name = parts[-1]
             stem, ext = os.path.splitext(name)

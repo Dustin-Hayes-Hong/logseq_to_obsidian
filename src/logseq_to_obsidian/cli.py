@@ -38,6 +38,7 @@ def parse_args(argv: List[str]) -> Options:
         default=[],
         help="Convert wikilinks of the form [[key/value]] to Dataview inline fields [key::value] for the given key(s).",
     )
+    p.add_argument("--keep-pages", action="store_true", help="Keep the 'pages/' folder prefix in output")
     p.add_argument("--dry-run", action="store_true", help="Do not write files; print plan only")
     args = p.parse_args(argv)
     return Options(
@@ -47,6 +48,7 @@ def parse_args(argv: List[str]) -> Options:
         dry_run=bool(args.dry_run),
         tasks_format=str(args.tasks_format),
         field_keys=list(args.field_key or []),
+        keep_pages=bool(args.keep_pages),
     )
 
 

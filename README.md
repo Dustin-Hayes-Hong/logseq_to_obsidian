@@ -4,122 +4,112 @@
 ![lint](https://github.com/sercxanto/logseq_to_obsidian/actions/workflows/lint.yml/badge.svg)
 [![codecov](https://codecov.io/gh/sercxanto/logseq_to_obsidian/graph/badge.svg?token=bTE5A3niNf)](https://codecov.io/gh/sercxanto/logseq_to_obsidian)
 
-## Overview
+[简体中文](#简体中文) | [English](#english)
 
-- Converts a Logseq vault (Markdown flavor) to Obsidian-friendly Markdown.
-- Handles page properties → YAML front matter, task statuses, block IDs, and block references.
-- Preserves non-page folders; moves `pages/` content to the vault root.
+---
 
-## Features
+<h2 id="简体中文">简体中文</h2>
 
-- Page properties (`key:: value`) at top → YAML front matter.
-- Special mappings:
-    - `alias::` or `aliases::` → `aliases: []` (array)
-    - `tags::` → `tags: []` (array, without `#`)
-    - `title::` → omitted (Obsidian only uses the filename as the note name). If the Logseq title mismatches the vault-relative output path, a warning is emitted so you can tidy it up.
-- Task markers:
-    - Recognized at the start of a list item (`- STATE ...`, uppercase only):
-        - `TODO`, `DOING`, `LATER`, `NOW`, `WAIT`, `WAITING`, `IN-PROGRESS` → `- [ ] ...`
-        - `DONE`, `CANCELED`, `CANCELLED` → `- [x] ...`
-    - Priorities right after state (`[#A|#B|#C]`):
-        - Emoji: A→`⏫`, B→`🔼`, C→`🔽` (appended at end)
-        - Dataview: `[priority::high|medium|low]` (appended at end; omitted if none)
-    - Dates anywhere after the state:
-        - `SCHEDULED: <YYYY-MM-DD [Dow] [HH:MM] [repeater]>` → Emoji: `⏳ YYYY-MM-DD[ HH:MM]`; Dataview: `[scheduled::YYYY-MM-DD[ HH:MM]]`
-        - `DEADLINE: <YYYY-MM-DD [Dow] [HH:MM] [repeater]>` → Emoji: `📅 YYYY-MM-DD[ HH:MM]`; Dataview: `[due::YYYY-MM-DD[ HH:MM]]`
-        - Repeaters: `. +N<u>` or `++N<u>` → “every N <unit> when done”; `+N<u>` → “every N <unit>”
-        - Units: `y`=year(s), `m`=month(s), `w`=week(s), `d`=day(s), `h`=hour(s); pluralized when N ≠ 1
-        - Ordering: append priority, then scheduled, then due, then repeat; block anchors (e.g., `^id`) remain last
-- Block IDs:
-    - `id:: <uuid>` lines are converted to Obsidian block anchors by appending `^<uuid>` to the owning block line.
-- Block references:
-    - `((<uuid>))` → `[[<FileName>#^<uuid>]]` (resolved by scanning all files first).
-    - Optional: convert configured wikilinks `[[key/value]]` to Dataview inline fields `[key::value]` (non-embed, no alias, not inside code blocks).
-- Alias links:
-    - `[Display Name]([[Page Name]])` → `[[Page Name|Display Name]]` (outside fenced code blocks).
-- Embeds:
-    - `{{embed ((<uuid>))}}` → `![[<FileName>#^<uuid>]]`
-    - `{{embed [[Some Page]]}}` → `![[Some Page]]`
-    - `{{video https://...}}` → `![](https://...)`
-    - `{{youtube https://...}}` → `![](https://...)`
-- Images in assets:
-    - `![alt](../assets/image.png)` or `![alt](assets/image.png)` → `![[image.png]]` (alt text is not preserved)
-    - With size attributes: `![alt](../assets/image.png){:height H, :width W}` → `![[image.png|WxH]]` (width × height)
-- Headings followed by indented lists:
-    - If a heading line is immediately followed by an indented list (≥4 spaces or tabs), prefix the heading with `- ` (i.e., `- # Heading`).
-    - Rationale: Logseq treats such lists as children of the heading; Obsidian otherwise renders them as quoted/code blocks. This keeps folding behavior aligned.
-- Journals:
-    - Renames `YYYY_MM_DD.md` → `YYYY-MM-DD.md` and can move journals to a specific folder.
-- Assets and other files are copied as-is.
+### 概述
 
-## Installation
+- 将 Logseq 库（Markdown 格式）转换为对 Obsidian 友好的 Markdown 格式。
+- 自动处理：页面属性 → YAML 正文、任务状态、块 ID 锚点、以及跨文件的块引用映射。
+- 目录结构：默认将 `pages/` 内容移动到库根目录（可通过参数保留），并自动重命名日记文件。
 
-- pipx (recommended): `pipx install logseq-to-obsidian`
-- pip: `pip install logseq-to-obsidian`
-- From Git (development version): `pipx install "git+https://github.com/sercxanto/logseq_to_obsidian.git@main"`
+### 核心功能
 
-## Usage
+- **页面属性转换**：
+    - 将顶部的 `key:: value` 转换为 YAML front matter。
+    - **引号引用**：自动对数字别名（如 `alias:: 1`）和含有 Wiki 链接的属性（如 `word:: [[link]]`）添加引号，确保元数据在 Obsidian 中被正确识别。
+- **标签规范化**：
+    - 将 `tags::` 转换为 YAML 数组。
+    - 优先级顺序：按逗号分隔符、Wiki 链接、`#hashtag` 的顺序依次提取并排重。
+- **任务标记系统**：
+    - 兼容 Logseq 的 10 种任务状态（如 `TODO`, `DOING`, `DONE`, `CANCELED` 等）。
+    - 状态映射：`DONE/CANCELED` 映射为已完成 `[x]`，其余映射为未完成 `[ ]`。
+    - 支持优先级：`[#A/B/C]` 可选输出为 Emoji (`⏫/🔼/🔽`) 或 Dataview 字段。
+    - 日期支持：自动解析 `SCHEDULED` 和 `DEADLINE` 及其循环规则（Repeater），并移除多余的时间戳标记。
+- **块 ID 与块引用解析**：
+    - 块 ID：将 `id:: <uuid>` 转换为行尾的 `^<uuid>` 锚点。
+    - 跨文件引用：扫描全库以将 `((<uuid>))` 转换为正确的 `[[文件名#^<uuid>]]` 格式。
+- **路径与文件管理**：
+    - **层级转换**：自动将文件名中的 `___` 转换为子目录结构（例如 `pages/A___B.md` → `A/B.md`）。
+    - **自动过滤**：转换过程中会自动跳过 `.git/`, `logseq/` 元数据目录及不支持的 `whiteboards/` 目录。
+    - **特殊处理**：对含有百分比编码（Percent-encoded）的文件名发出警告，提示可能的链接失效风险。
+- **标题与折叠优化**：
+    - 如果标题行后直接紧跟缩进列表，会自动将标题转换为列表项（`- # 标题`），以保持 Obsidian 中的折叠逻辑与 Logseq 一致。
 
+### 安装
+
+```bash
+# 推荐使用 pipx
+pipx install logseq-to-obsidian
+# 或使用 pip
+pip install logseq-to-obsidian
 ```
+
+### 使用方法
+
+```bash
 logseq-to-obsidian \
   --input /path/to/logseq-vault \
   --output /path/to/obsidian-vault \
   --daily-folder "Daily Notes" \
   --tasks-format emoji \
-  --field-key project \
-  --field-key topic \
-  --dry-run
+  --keep-pages
 ```
 
-Alternatively (no console script), you can run:
+### 参数详解
 
+- `--input`: Logseq 库根目录（必须包含 `pages/`）。
+- `--output`: 目标 Obsidian 库路径。
+- `--daily-folder <name>`: 将日记（journals）移动到指定的子文件夹。
+- `--tasks-format {emoji|dataview}`: 任务元数据的表现风格。
+- `--field-key <key>`: 将 `[[key/value]]` 形式的链接转换为 Dataview 行内字段。
+- `--keep-pages`: 在输出库中保留 `pages/` 顶级文件夹。
+- `--dry-run`: 预览转换结果而不执行写入。
+
+---
+
+<h2 id="english">English</h2>
+
+### Overview
+
+- Converts a Logseq vault to Obsidian-friendly Markdown.
+- Handles automated mapping of properties, task states, block anchors, and cross-file references.
+- Optimizes folder structure by flattening `pages/` (optional) and renaming journals.
+
+### Key Features
+
+- **YAML Front Matter**:
+    - Converts `key:: value` pairs with smart quoting for numbers and `[[wikilinks]]` to ensure Obsidian compatibility.
+- **Tag Normalization**:
+    - Extracts tags from comma-separated strings, wikilinks, and hashtags while preserving a natural order.
+- **Advanced Task States**:
+    - Supports all 10 Logseq states, priorities, and complex date/repeater metadata.
+- **Block Reference Resolution**:
+    - Scans the entire vault to turn `((uuid))` references into precise `[[File#^id]]` links.
+- **Path & Hierarchy**:
+    - Automatically expands `___` separators in filenames into a real folder hierarchy.
+    - Filters out `.git/`, `logseq/` metadata, and `whiteboards/`.
+- **Folding Consistency**:
+    - Identifies headings followed by indented lists and converts them to list-item headings (`- # Heading`) for consistent UI behavior.
+
+### Usage
+
+```bash
+logseq-to-obsidian --input <logseq_path> --output <obsidian_path> --keep-pages
 ```
-python -m logseq_to_obsidian \
-  --input /path/to/logseq-vault \
-  --output /path/to/obsidian-vault \
-  --dry-run
-```
 
-## Options
+### Options
 
-- `--input`: Path to the Logseq vault root (folder containing `pages/`, `journals/`, etc.).
-- `--output`: Destination Obsidian vault directory (created if not exists).
-- `--daily-folder <name>`: Move `journals/` into this folder in the output. If omitted, keeps `journals/`.
-- `--tasks-format {emoji|dataview}`: Choose output format for Tasks metadata (priorities now; dates later). Default: `emoji`.
-- `--field-key <key>`: Convert wikilinks of the form `[[key/value]]` to Dataview inline fields `[key::value]`. Repeatable for multiple keys.
-- Pages are always flattened to the vault root; see "File placement rules" below.
-- `--dry-run`: Print planned changes without writing files.
+- `--input`, `--output`: Source and destination directories.
+- `--daily-folder`: Rename and move journals.
+- `--keep-pages`: Opt-out of `pages/` flattening.
+- `--field-key`: Convert namespaced wikilinks to Dataview fields.
 
-## Notes and assumptions
+---
 
-- Only Markdown (`.md`) files are transformed; other files are copied.
-- Block reference resolution requires that `id::` appears for referenced blocks in the source files.
-- This tool is conservative: it preserves unknown page properties in YAML.
-- Block-level `collapsed::` properties are ignored; Obsidian stores list collapse state outside Markdown.
-
-## Limitations
-
-- Does not parse or migrate the Logseq database; operates purely on Markdown files.
-- Complex block property drawers beyond `id::` are not transformed (left in place).
-- Skips Logseq's internal `logseq/` metadata folder.
-- Skips a top-level `.git/` directory if present.
-- Skips Logseq whiteboards (`whiteboards/`); a warning is emitted since Obsidian cannot read Logseq's whiteboard format.
-    - Only normalizes heading + indented list patterns outside fenced code blocks; headings already inside list items are left unchanged.
-- Logseq percent-encodes invalid characters in filenames; this tool preserves those filenames and emits a warning when detected. It does not attempt to decode them to avoid invalid output names or collisions, so you may need to rename notes in Logseq first if Obsidian links are broken.
-- Please make sure that the Logdeq's file name format is `triple-lowbar`, see the [documentation](https://help.obsidian.md/create-note)
-- File times are preserved: output files keep the original source modification time (mtime) for both transformed Markdown and copied assets.
-
-## File placement rules
-
-- Pages: All files from Logseq's `pages/` are placed at the root of the Obsidian vault.
-- Nested paths: Logseq encodes subfolders in page filenames using three underscores `___`.
-    - Example: `pages/a___b.md` becomes `a/b.md`.
-
-## Journals
-
-- Journal filenames are always renamed from `YYYY_MM_DD.md` to `YYYY-MM-DD.md`.
-- Logseq already displays journal page links using dashes (e.g., `[[2024-08-30]]`), so link text does not need conversion.
-
-## Development / Contributing
+### Development / Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md)

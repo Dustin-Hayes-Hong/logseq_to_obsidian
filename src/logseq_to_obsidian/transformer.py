@@ -141,6 +141,23 @@ def normalize_tags(val: str) -> List[str]:
     return found
 
 
+def _quote_yaml_value(v: str) -> str:
+    """Quote a string for YAML if it contains special characters or looks like a non-string type."""
+    if not v:
+        return '""'
+    # Quote if purely numeric, or a boolean/null keyword
+    low = v.lower()
+    if v.isdigit() or low in {"true", "false", "null", "yes", "no"}:
+        return f'"{v}"'
+    # Quote if it starts with characters that trigger YAML collections or other special meanings
+    # or if it contains ':' which is a key separator.
+    if v[0] in "[]{}!&*?|>-@%`\"'#" or ":" in v:
+        # Minimal escaping: just double quotes
+        escaped = v.replace('"', '\\"')
+        return f'"{escaped}"'
+    return v
+
+
 def emit_yaml_frontmatter(props: Dict[str, str]) -> Optional[str]:
     if not props:
         return None
@@ -156,7 +173,7 @@ def emit_yaml_frontmatter(props: Dict[str, str]) -> Optional[str]:
         if aliases:
             yaml_lines.append("aliases:")
             for a in aliases:
-                yaml_lines.append(f"  - {a}")
+                yaml_lines.append(f"  - {_quote_yaml_value(a)}")
     # tags
     tags_src = props.get("tags")
     if tags_src:
@@ -164,15 +181,15 @@ def emit_yaml_frontmatter(props: Dict[str, str]) -> Optional[str]:
         if tags:
             yaml_lines.append("tags:")
             for t in tags:
-                yaml_lines.append(f"  - {t}")
+                yaml_lines.append(f"  - {_quote_yaml_value(t)}")
     # Include other props (excluding those already handled)
     handled = {"title", "aliases", "alias", "tags"}
     for k, v in props.items():
         if k in handled:
             continue
-        # simple scalars; leave as-is
+        # Quote scalars to ensure they don't break YAML (links like [[...]] must be quoted)
         if v:
-            yaml_lines.append(f"{k}: {v}")
+            yaml_lines.append(f"{k}: {_quote_yaml_value(v)}")
     yaml_lines.append("---")
     return "\n".join(yaml_lines) + "\n\n"
 
