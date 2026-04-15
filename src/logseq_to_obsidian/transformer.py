@@ -49,6 +49,7 @@ __all__ = [
     "attach_block_ids",
     "build_block_index",
     "emit_yaml_frontmatter",
+    "extract_all_wikilinks",
     "fix_heading_child_lists",
     "normalize_aliases",
     "normalize_tags",
@@ -593,6 +594,17 @@ def replace_wikilinks_to_dv_fields(text: str, field_keys: List[str]) -> str:
 
         out_lines.append(WIKILINK_RE.sub(repl, line))
     return "".join(out_lines)
+
+
+def extract_all_wikilinks(text: str) -> List[str]:
+    """Extract all wikilink targets from the text, stripping aliases and anchors."""
+    targets = []
+    # Use INLINE_WIKILINK_RE to pick up all [[...]] occurrences
+    for m in INLINE_WIKILINK_RE.finditer(text):
+        inner = m.group(1).split("|")[0].split("#")[0].strip()
+        if inner and inner not in targets:
+            targets.append(inner)
+    return targets
 
 
 def _process_blocks_multiline(lines: List[str], tasks_format: str) -> List[str]:

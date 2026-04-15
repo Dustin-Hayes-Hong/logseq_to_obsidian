@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
@@ -18,8 +18,9 @@ class Options:
     daily_folder: Optional[str]
     dry_run: bool
     tasks_format: str  # 'emoji' or 'dataview'
-    field_keys: List[str]
+    field_keys: List[str] = field(default_factory=list)
     keep_pages: bool = False
+    create_missing_pages: bool = False
 
 
 @dataclass

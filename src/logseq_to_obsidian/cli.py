@@ -8,6 +8,7 @@ from typing import Dict, List
 from .planner import Options, collect_files, copy_or_write
 from .transformer import (
     build_block_index,
+    extract_all_wikilinks,
     replace_asset_images,
     replace_block_refs,
     replace_embeds,
@@ -39,6 +40,7 @@ def parse_args(argv: List[str]) -> Options:
         help="Convert wikilinks of the form [[key/value]] to Dataview inline fields [key::value] for the given key(s).",
     )
     p.add_argument("--keep-pages", action="store_true", help="Keep the 'pages/' folder prefix in output")
+    p.add_argument("--create-missing-pages", action="store_true", help="Create placeholder files for missing wikilink targets")
     p.add_argument("--dry-run", action="store_true", help="Do not write files; print plan only")
     args = p.parse_args(argv)
     return Options(
@@ -49,6 +51,7 @@ def parse_args(argv: List[str]) -> Options:
         tasks_format=str(args.tasks_format),
         field_keys=list(args.field_key or []),
         keep_pages=bool(args.keep_pages),
+        create_missing_pages=bool(args.create_missing_pages),
     )
 
 
@@ -108,6 +111,7 @@ def main(argv: List[str]) -> int:
     # Second pass: write files, replacing block refs using the index
     writes = 0
     copies = 0
+    all_wikilink_targets = set()
     for pl in plans:
         if pl.is_markdown:
             text = pre_texts.get(pl.in_path, pl.in_path.read_text(encoding="utf-8"))
@@ -116,6 +120,10 @@ def main(argv: List[str]) -> int:
             text = replace_page_alias_links(text)
             text = replace_wikilinks_to_dv_fields(text, opt.field_keys)
             text = replace_asset_images(text)
+            
+            if opt.create_missing_pages:
+                all_wikilink_targets.update(extract_all_wikilinks(text))
+
             # Ensure a trailing newline at EOF to match golden outputs
             if not text.endswith("\n"):
                 text += "\n"
@@ -125,6 +133,31 @@ def main(argv: List[str]) -> int:
             # Copy assets and others
             copy_or_write(pl.out_path, None, pl.in_path, opt.dry_run)
             copies += 1
+
+    if opt.create_missing_pages and not opt.dry_run:
+        existing_pages = set()
+        for pl in plans:
+            if pl.is_markdown:
+                try:
+                    rel = pl.out_path.relative_to(opt.output_dir)
+                    existing_pages.add(rel.with_suffix("").as_posix())
+                    existing_pages.add(rel.stem)
+                except ValueError:
+                    pass
+
+        num_missing_created = 0
+        pages_dir = opt.output_dir / "pages" if opt.keep_pages else opt.output_dir
+        
+        for target in sorted(all_wikilink_targets):
+            if target not in existing_pages:
+                missing_path = pages_dir / f"{target}.md"
+                if not missing_path.exists():
+                    missing_path.parent.mkdir(parents=True, exist_ok=True)
+                    missing_path.write_text(f"---\ntags: [placeholder]\n---\n\n# {target}\n\nThis page was automatically created from a wikilink.", encoding="utf-8")
+                    num_missing_created += 1
+        
+        if num_missing_created > 0:
+            print(f"[INFO] Created {num_missing_created} missing placeholder pages.")
 
     print(f"[DONE] Wrote {writes} markdown file(s), copied {copies} other file(s)")
     if warn_messages:
