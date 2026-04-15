@@ -22,6 +22,7 @@ class Options:
     keep_pages: bool = False
     create_missing_pages: bool = False
     tag_properties: List[str] = field(default_factory=list)
+    tag_all_properties: bool = False
 
 
 @dataclass

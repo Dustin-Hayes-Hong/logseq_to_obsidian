@@ -162,7 +162,9 @@ def _quote_yaml_value(v: str) -> str:
 
 
 def emit_yaml_frontmatter(
-    props: Dict[str, str], tag_properties: List[str] = []
+    props: Dict[str, str], 
+    tag_properties: List[str] = [],
+    tag_all_properties: bool = False
 ) -> Optional[str]:
     if not props:
         return None
@@ -171,7 +173,17 @@ def emit_yaml_frontmatter(
 
     # 0) Tagify properties
     final_tags = normalize_tags(props.get("tags") or "")
-    for tk in tag_properties:
+    
+    # Identify which keys specifically to tagify
+    to_tagify = set(tag_properties)
+    if tag_all_properties:
+        # tag everything except protected ones
+        protected = {"title", "alias", "aliases", "tags"}
+        for k in props.keys():
+            if k not in protected:
+                to_tagify.add(k)
+
+    for tk in sorted(to_tagify):
         if tk in props:
             # Add key itself as a tag
             if tk not in final_tags:
@@ -200,7 +212,7 @@ def emit_yaml_frontmatter(
             yaml_lines.append(f"  - {t}")
 
     # remaining properties
-    skip_keys = {"title", "alias", "aliases", "tags"} | set(tag_properties)
+    skip_keys = {"title", "alias", "aliases", "tags"} | to_tagify
     for k, v in props.items():
         if k in skip_keys:
             continue
@@ -803,6 +815,7 @@ def transform_markdown(
     warn_collector: Optional[List[str]] = None,
     tasks_format: str = "emoji",
     tag_properties: List[str] = [],
+    tag_all_properties: bool = False,
 ) -> str:
     # Page frontmatter
     lines = text.splitlines(keepends=True)
@@ -822,7 +835,7 @@ def transform_markdown(
             if warn_collector is not None:
                 warn_collector.append(msg)
             props.pop("title", None)
-    yaml = emit_yaml_frontmatter(props, tag_properties)
+    yaml = emit_yaml_frontmatter(props, tag_properties, tag_all_properties)
 
     body_lines = lines[consumed:]
     # Drop leading blank lines in body; YAML already provides a separating blank line
